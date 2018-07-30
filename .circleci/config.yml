@@ -13,3 +13,24 @@ jobs:
       - run: make ci
       - run: bash <(curl -s https://codecov.io/bash)
       - run: cd browser/flagr-ui && yarn install && yarn run test
+
+  deploy:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - run:
+          name: Nestor hook
+          command: >-
+            curl -s
+            "https://builder.internal.chpr.fr/api/builds/$CIRCLE_PROJECT_REPONAME?token=$NESTOR_TOKEN"
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
