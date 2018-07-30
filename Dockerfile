@@ -8,6 +8,7 @@ RUN make build
 
 FROM alpine:3.6
 RUN apk add --no-cache libc6-compat ca-certificates curl
+RUN apk update && apk add bash
 WORKDIR /go/src/github.com/checkr/flagr
 VOLUME ["/data"]
 
