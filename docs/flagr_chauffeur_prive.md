@@ -20,7 +20,7 @@ Extract from HAProxy configuration file:
 ```
 # Allow accessing flagr only with GET and POST requests
 use_backend flagr if is_flagr METH_GET METH_POST
-``` 
+```
 
 On top of that, we implemented the only security measure offered by Flagr: JWT (see [Flagr environment variables](./flagr_env.md)).
 Every micro service wanting to access Flagr will need an JWT auth token. This is done by setting two environment
@@ -31,3 +31,13 @@ FLAGR_API_URL: 'https://flagr.internal.chpr.fr'
 FLAGR_AUTH_TOKEN: '.....'
 ```
 
+![Flagr Security Architecture](images/flagr_security_architecture.jpg)
+
+### Access to Flagr web UI
+
+As shown previously on Flagr security architecture, the full web ui access is only accessible by using the
+heroku DNS name `https://prod-flagr-cp-eu.herokuapp.com` with the correct JWT token. You will have to add the
+following header:
+> `Authorization: Bearer myJWTToken`
+
+The JWT tokens can be found in 1password (`Flagr Production` and `Flagr staging`).
