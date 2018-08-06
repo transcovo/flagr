@@ -1,4 +1,4 @@
-# Using Flagr at Chauffeur Prive
+# Using Flagr at Chauffeur Privé
 
 Here is a quick overview of how we use Flagr at Chauffeur Prive. It is a great asset for the expansion 
 as you can easily activate/deactivate features based on the user's location.
@@ -23,7 +23,7 @@ use_backend flagr if is_flagr METH_GET METH_POST
 ```
 
 On top of that, we implemented the only security measure offered by Flagr: JWT (see [Flagr environment variables](./flagr_env.md)).
-Every micro service wanting to access Flagr will need an JWT auth token. This is done by setting two environment
+Every micro service wanting to access Flagr will need a JWT auth token. This is done by setting two environment
 variables in `stargate` and `drivergate`:
 
 ```yaml
