@@ -52,7 +52,9 @@
 </template>
 
 <script>
+import Axios from 'axios'
 import vueJsonEditor from 'vue-json-editor'
+
 import constants from '@/constants'
 
 const {
@@ -61,7 +63,7 @@ const {
 
 export default {
   name: 'debug-console',
-  props: ['flagId'],
+  props: ['flag'],
   data () {
     return {
       evalContext: {
@@ -71,7 +73,8 @@ export default {
           hello: 'world'
         },
         enableDebug: true,
-        flagID: this.$props.flagId
+        flagID: this.flag.id,
+        flagKey: this.flag.key
       },
       evalResult: {},
       batchEvalContext: {
@@ -93,7 +96,7 @@ export default {
         ],
         enableDebug: true,
         flagIDs: [
-          this.$props.flagId
+          this.flag.id
         ]
       },
       batchEvalResult: {}
@@ -101,20 +104,16 @@ export default {
   },
   methods: {
     postEvaluation (evalContext) {
-      this.$http.post(`${API_URL}/evaluation`, evalContext).then((response) => {
+      Axios.post(`${API_URL}/evaluation`, evalContext).then((response) => {
         this.$message.success(`evaluation success`)
-        this.evalResult = response.body
-      }, () => {
-        this.$message.error(`evaluation error`)
-      })
+        this.evalResult = response.data
+      }, () => { this.$message.error(`evaluation error`) })
     },
     postEvaluationBatch (batchEvalContext) {
-      this.$http.post(`${API_URL}/evaluation/batch`, batchEvalContext).then((response) => {
+      Axios.post(`${API_URL}/evaluation/batch`, batchEvalContext).then((response) => {
         this.$message.success(`evaluation success`)
-        this.batchEvalResult = response.body
-      }, () => {
-        this.$message.error(`evaluation error`)
-      })
+        this.batchEvalResult = response.data
+      }, () => { this.$message.error(`evaluation error`) })
     }
   },
   components: {

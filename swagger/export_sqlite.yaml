@@ -1,0 +1,16 @@
+get:
+  tags:
+    - export
+  operationId: getExportSQLite
+  description: Export sqlite3 format of the db dump, which is converted from the main database.
+  produces:
+    - application/octet-stream
+  responses:
+    200:
+      description: OK
+      schema:
+        type: file
+    default:
+      description: generic error response
+      schema:
+        $ref: "#/definitions/error"

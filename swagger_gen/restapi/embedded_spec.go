@@ -31,7 +31,7 @@ func init() {
   "info": {
     "description": "Flagr is a feature flagging, A/B testing and dynamic configuration microservice",
     "title": "Flagr",
-    "version": "1.0.8"
+    "version": "1.0.10"
   },
   "basePath": "/api/v1",
   "paths": {
@@ -101,6 +101,32 @@ func init() {
         }
       }
     },
+    "/export/sqlite": {
+      "get": {
+        "description": "Export sqlite3 format of the db dump, which is converted from the main database.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "tags": [
+          "export"
+        ],
+        "operationId": "getExportSQLite",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "default": {
+            "description": "generic error response",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/flags": {
       "get": {
         "tags": [
@@ -131,6 +157,12 @@ func init() {
             "type": "string",
             "description": "return flags partially matching given description",
             "name": "description_like",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "return flags matching given key",
+            "name": "key",
             "in": "query"
           },
           {
@@ -1037,12 +1069,14 @@ func init() {
     },
     "/health": {
       "get": {
+        "description": "Check if Flagr is healthy",
         "tags": [
           "health"
         ],
+        "operationId": "getHealth",
         "responses": {
           "200": {
-            "description": "Flagr is healthy"
+            "description": "OK"
           },
           "default": {
             "description": "generic error response",
@@ -1128,6 +1162,10 @@ func init() {
         "description": {
           "type": "string",
           "minLength": 1
+        },
+        "key": {
+          "description": "unique key representation of the flag",
+          "type": "string"
         }
       }
     },
@@ -1215,8 +1253,7 @@ func init() {
     "evalContext": {
       "type": "object",
       "required": [
-        "entityType",
-        "flagID"
+        "entityType"
       ],
       "properties": {
         "enableDebug": {
@@ -1234,9 +1271,14 @@ func init() {
           "minLength": 1
         },
         "flagID": {
+          "description": "flagID",
           "type": "integer",
           "format": "int64",
           "minimum": 1
+        },
+        "flagKey": {
+          "description": "flagKey. flagID or flagKey will resolve to the same flag. Either works.",
+          "type": "string"
         }
       }
     },
@@ -1258,6 +1300,7 @@ func init() {
       "type": "object",
       "required": [
         "flagID",
+        "flagKey",
         "segmentID",
         "variantID",
         "variantKey",
@@ -1276,6 +1319,9 @@ func init() {
           "type": "integer",
           "format": "int64",
           "minimum": 1
+        },
+        "flagKey": {
+          "type": "string"
         },
         "flagSnapshotID": {
           "type": "integer",
@@ -1307,8 +1353,7 @@ func init() {
     "evaluationBatchRequest": {
       "type": "object",
       "required": [
-        "entities",
-        "flagIDs"
+        "entities"
       ],
       "properties": {
         "enableDebug": {
@@ -1322,12 +1367,22 @@ func init() {
           }
         },
         "flagIDs": {
+          "description": "flagIDs",
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
+          }
+        },
+        "flagKeys": {
+          "description": "flagKeys. Either flagIDs or flagKeys works. If pass in both, Flagr may return duplicate results.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }
@@ -1372,6 +1427,9 @@ func init() {
         "dataRecordsEnabled"
       ],
       "properties": {
+        "createdBy": {
+          "type": "string"
+        },
         "dataRecordsEnabled": {
           "description": "enabled data records will get data logging in the metrics pipeline, for example, kafka.",
           "type": "boolean"
@@ -1389,11 +1447,23 @@ func init() {
           "minimum": 1,
           "readOnly": true
         },
+        "key": {
+          "description": "unique key representation of the flag",
+          "type": "string",
+          "minLength": 1
+        },
         "segments": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/segment"
           }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string"
         },
         "variants": {
           "type": "array",
@@ -1456,6 +1526,10 @@ func init() {
         "description": {
           "type": "string",
           "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "x-nullable": true
         }
       }
     },
@@ -1651,6 +1725,12 @@ func init() {
       "name": "Health Check",
       "tags": [
         "health"
+      ]
+    },
+    {
+      "name": "Export",
+      "tags": [
+        "export"
       ]
     }
   ]
@@ -1669,7 +1749,7 @@ func init() {
   "info": {
     "description": "Flagr is a feature flagging, A/B testing and dynamic configuration microservice",
     "title": "Flagr",
-    "version": "1.0.8"
+    "version": "1.0.10"
   },
   "basePath": "/api/v1",
   "paths": {
@@ -1739,6 +1819,32 @@ func init() {
         }
       }
     },
+    "/export/sqlite": {
+      "get": {
+        "description": "Export sqlite3 format of the db dump, which is converted from the main database.",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "tags": [
+          "export"
+        ],
+        "operationId": "getExportSQLite",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "default": {
+            "description": "generic error response",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/flags": {
       "get": {
         "tags": [
@@ -1769,6 +1875,12 @@ func init() {
             "type": "string",
             "description": "return flags partially matching given description",
             "name": "description_like",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "return flags matching given key",
+            "name": "key",
             "in": "query"
           },
           {
@@ -2675,12 +2787,14 @@ func init() {
     },
     "/health": {
       "get": {
+        "description": "Check if Flagr is healthy",
         "tags": [
           "health"
         ],
+        "operationId": "getHealth",
         "responses": {
           "200": {
-            "description": "Flagr is healthy"
+            "description": "OK"
           },
           "default": {
             "description": "generic error response",
@@ -2766,6 +2880,10 @@ func init() {
         "description": {
           "type": "string",
           "minLength": 1
+        },
+        "key": {
+          "description": "unique key representation of the flag",
+          "type": "string"
         }
       }
     },
@@ -2853,8 +2971,7 @@ func init() {
     "evalContext": {
       "type": "object",
       "required": [
-        "entityType",
-        "flagID"
+        "entityType"
       ],
       "properties": {
         "enableDebug": {
@@ -2872,9 +2989,14 @@ func init() {
           "minLength": 1
         },
         "flagID": {
+          "description": "flagID",
           "type": "integer",
           "format": "int64",
           "minimum": 1
+        },
+        "flagKey": {
+          "description": "flagKey. flagID or flagKey will resolve to the same flag. Either works.",
+          "type": "string"
         }
       }
     },
@@ -2896,6 +3018,7 @@ func init() {
       "type": "object",
       "required": [
         "flagID",
+        "flagKey",
         "segmentID",
         "variantID",
         "variantKey",
@@ -2914,6 +3037,9 @@ func init() {
           "type": "integer",
           "format": "int64",
           "minimum": 1
+        },
+        "flagKey": {
+          "type": "string"
         },
         "flagSnapshotID": {
           "type": "integer",
@@ -2945,8 +3071,7 @@ func init() {
     "evaluationBatchRequest": {
       "type": "object",
       "required": [
-        "entities",
-        "flagIDs"
+        "entities"
       ],
       "properties": {
         "enableDebug": {
@@ -2960,12 +3085,22 @@ func init() {
           }
         },
         "flagIDs": {
+          "description": "flagIDs",
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "integer",
             "format": "int64",
             "minimum": 1
+          }
+        },
+        "flagKeys": {
+          "description": "flagKeys. Either flagIDs or flagKeys works. If pass in both, Flagr may return duplicate results.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }
@@ -3010,6 +3145,9 @@ func init() {
         "dataRecordsEnabled"
       ],
       "properties": {
+        "createdBy": {
+          "type": "string"
+        },
         "dataRecordsEnabled": {
           "description": "enabled data records will get data logging in the metrics pipeline, for example, kafka.",
           "type": "boolean"
@@ -3027,11 +3165,23 @@ func init() {
           "minimum": 1,
           "readOnly": true
         },
+        "key": {
+          "description": "unique key representation of the flag",
+          "type": "string",
+          "minLength": 1
+        },
         "segments": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/segment"
           }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string"
         },
         "variants": {
           "type": "array",
@@ -3094,6 +3244,10 @@ func init() {
         "description": {
           "type": "string",
           "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "x-nullable": true
         }
       }
     },
@@ -3289,6 +3443,12 @@ func init() {
       "name": "Health Check",
       "tags": [
         "health"
+      ]
+    },
+    {
+      "name": "Export",
+      "tags": [
+        "export"
       ]
     }
   ]

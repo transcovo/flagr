@@ -1,8 +1,8 @@
 package config
 
 import (
+	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,13 +20,13 @@ import (
 
 // SetupGlobalMiddleware setup the global middleware
 func SetupGlobalMiddleware(handler http.Handler) http.Handler {
-	pwd, _ := os.Getwd()
 	n := negroni.New()
 
 	if Config.CORSEnabled {
 		n.Use(cors.New(cors.Options{
 			AllowedOrigins: []string{"*"},
-			AllowedHeaders: []string{"Content-Type", "Accepts"},
+			AllowedHeaders: []string{"Content-Type"},
+			ExposedHeaders: []string{"Www-Authenticate"},
 			AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		}))
 	}
@@ -48,7 +48,7 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 	}
 
 	n.Use(negroni.NewRecovery())
-	n.Use(negroni.NewStatic(http.Dir(pwd + "/browser/flagr-ui/dist/")))
+	n.Use(negroni.NewStatic(http.Dir("./browser/flagr-ui/dist/")))
 
 	if Config.PProfEnabled {
 		n.UseHandler(pprof.New()(handler))
@@ -80,7 +80,8 @@ func setupJWTAuthMiddleware() *auth {
 	}
 
 	return &auth{
-		WhitelistPaths: Config.JWTAuthWhitelistPaths,
+		PrefixWhitelistPaths: Config.JWTAuthPrefixWhitelistPaths,
+		ExactWhitelistPaths:  Config.JWTAuthExactWhitelistPaths,
 		JWTMiddleware: jwtmiddleware.New(jwtmiddleware.Options{
 			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 				return validationKey, errParsingKey
@@ -98,25 +99,53 @@ func setupJWTAuthMiddleware() *auth {
 			),
 			UserProperty: Config.JWTAuthUserProperty,
 			Debug:        Config.JWTAuthDebug,
-			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err string) {
-				http.Redirect(w, r, Config.JWTAuthNoTokenRedirectURL, http.StatusTemporaryRedirect)
-			},
+			ErrorHandler: jwtErrorHandler,
 		}),
 	}
 }
 
+func jwtErrorHandler(w http.ResponseWriter, r *http.Request, err string) {
+	switch Config.JWTAuthNoTokenStatusCode {
+	case http.StatusTemporaryRedirect:
+		http.Redirect(w, r, Config.JWTAuthNoTokenRedirectURL, http.StatusTemporaryRedirect)
+		return
+	default:
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, Config.JWTAuthNoTokenRedirectURL))
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+}
+
 type auth struct {
-	WhitelistPaths []string
-	JWTMiddleware  *jwtmiddleware.JWTMiddleware
+	PrefixWhitelistPaths []string
+	ExactWhitelistPaths  []string
+	JWTMiddleware        *jwtmiddleware.JWTMiddleware
+}
+
+func (a *auth) whitelist(req *http.Request) bool {
+	path := req.URL.Path
+
+	// If we set to 401 unauthorized, let the client handles the 401 itself
+	if Config.JWTAuthNoTokenStatusCode == http.StatusUnauthorized {
+		for _, p := range a.ExactWhitelistPaths {
+			if p == path {
+				return true
+			}
+		}
+	}
+
+	for _, p := range a.PrefixWhitelistPaths {
+		if p != "" && strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *auth) ServeHTTP(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
-	path := req.URL.Path
-	for _, p := range a.WhitelistPaths {
-		if p != "" && strings.HasPrefix(path, p) {
-			next(w, req)
-			return
-		}
+	if a.whitelist(req) {
+		next(w, req)
+		return
 	}
 	a.JWTMiddleware.HandlerWithNext(w, req, next)
 }

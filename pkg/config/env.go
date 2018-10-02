@@ -9,10 +9,8 @@ var Config = struct {
 	// Port - Flagr server port
 	Port int `env:"PORT" envDefault:"18000"`
 
-	// GracefulCleanupTimeout - the timeout after graceful shutdown. It's useful to mitigate Kubernetes
-	// rolling update race condition.
-	GracefulCleanupTimeout time.Duration `env:"FLAGR_GRACEFUL_CLEANUP_TIMEOUT" envDefault:"2s"`
-
+	// LogrusLevel sets the logrus logging level
+	LogrusLevel string `env:"FLAGR_LOGRUS_LEVEL" envDefault:"info"`
 	// PProfEnabled - to enable the standard pprof of golang's http server
 	PProfEnabled bool `env:"FLAGR_PPROF_ENABLED" envDefault:"true"`
 
@@ -22,6 +20,7 @@ var Config = struct {
 
 	// EvalLoggingEnabled - to enable the logging for eval results
 	EvalLoggingEnabled bool `env:"FLAGR_EVAL_LOGGING_ENABLED" envDefault:"true"`
+
 	// RateLimiterPerFlagPerSecondConsoleLogging - to rate limit the logging rate
 	// per flag per second
 	RateLimiterPerFlagPerSecondConsoleLogging int `env:"FLAGR_RATELIMITER_PERFLAG_PERSECOND_CONSOLE_LOGGING" envDefault:"100"`
@@ -66,7 +65,7 @@ var Config = struct {
 	// RecorderType - the pipeline to log data records, e.g. Kafka
 	RecorderType string `env:"FLAGR_RECORDER_TYPE" envDefault:"kafka"`
 
-	// RecorderKafkaBrokers and etc. - Kafka related configurations for data records logging (Flagr Metrics)
+	// Kafka related configurations for data records logging (Flagr Metrics)
 	RecorderKafkaBrokers        string        `env:"FLAGR_RECORDER_KAFKA_BROKERS" envDefault:":9092"`
 	RecorderKafkaCertFile       string        `env:"FLAGR_RECORDER_KAFKA_CERTFILE" envDefault:""`
 	RecorderKafkaKeyFile        string        `env:"FLAGR_RECORDER_KAFKA_KEYFILE" envDefault:""`
@@ -78,6 +77,17 @@ var Config = struct {
 	RecorderKafkaFlushFrequency time.Duration `env:"FLAGR_RECORDER_KAFKA_FLUSHFREQUENCY" envDefault:"500ms"`
 	RecorderKafkaEncrypted      bool          `env:"FLAGR_RECORDER_KAFKA_ENCRYPTED" envDefault:"false"`
 	RecorderKafkaEncryptionKey  string        `env:"FLAGR_RECORDER_KAFKA_ENCRYPTION_KEY" envDefault:""`
+
+	// Kinesis related configurations for data records logging (Flagr Metrics)
+	RecorderKinesisStreamName          string        `env:"FLAGR_RECORDER_KINESIS_STREAM_NAME" envDefault:"flagr-records"`
+	RecorderKinesisBacklogCount        int           `env:"FLAGR_RECORDER_KINESIS_BACKLOG_COUNT" envDefault:"500"`
+	RecorderKinesisMaxConnections      int           `env:"FLAGR_RECORDER_KINESIS_MAX_CONNECTIONS" envDefault:"24"`
+	RecorderKinesisFlushInterval       time.Duration `env:"FLAGR_RECORDER_KINESIS_FLUSH_INTERVAL" envDefault:"5s"`
+	RecorderKinesisBatchCount          int           `env:"FLAGR_RECORDER_KINESIS_BATCH_COUNT" envDefault:"500"`
+	RecorderKinesisBatchSize           int           `env:"FLAGR_RECORDER_KINESIS_BATCH_SIZE" envDefault:"0"`
+	RecorderKinesisAggregateBatchCount int           `env:"FLAGR_RECORDER_KINESIS_AGGREGATE_BATCH_COUNT" envDefault:"4294967295"`
+	RecorderKinesisAggregateBatchSize  int           `env:"FLAGR_RECORDER_KINESIS_AGGREGATE_BATCH_SIZE" envDefault:"51200"`
+	RecorderKinesisVerbose             bool          `env:"FLAGR_RECORDER_KINESIS_VERBOSE" envDefault:"false"`
 
 	/**
 	JWTAuthEnabled enables the JWT Auth
@@ -97,13 +107,15 @@ var Config = struct {
 	Note:
 		If the access_token is present in both the header and cookie only the latest will be used
 	*/
-	JWTAuthEnabled            bool     `env:"FLAGR_JWT_AUTH_ENABLED" envDefault:"false"`
-	JWTAuthDebug              bool     `env:"FLAGR_JWT_AUTH_DEBUG" envDefault:"false"`
-	JWTAuthWhitelistPaths     []string `env:"FLAGR_JWT_AUTH_WHITELIST_PATHS" envDefault:"/api/v1/evaluation" envSeparator:","`
-	JWTAuthCookieTokenName    string   `env:"FLAGR_JWT_AUTH_COOKIE_TOKEN_NAME" envDefault:"access_token"`
-	JWTAuthSecret             string   `env:"FLAGR_JWT_AUTH_SECRET" envDefault:""`
-	JWTAuthNoTokenRedirectURL string   `env:"FLAGR_JWT_AUTH_NO_TOKEN_REDIRECT_URL" envDefault:""`
-	JWTAuthUserProperty       string   `env:"FLAGR_JWT_AUTH_USER_PROPERTY" envDefault:"flagr_user"`
+	JWTAuthEnabled              bool     `env:"FLAGR_JWT_AUTH_ENABLED" envDefault:"false"`
+	JWTAuthDebug                bool     `env:"FLAGR_JWT_AUTH_DEBUG" envDefault:"false"`
+	JWTAuthPrefixWhitelistPaths []string `env:"FLAGR_JWT_AUTH_WHITELIST_PATHS" envDefault:"/api/v1/evaluation,/static" envSeparator:","`
+	JWTAuthExactWhitelistPaths  []string `env:"FLAGR_JWT_AUTH_EXACT_WHITELIST_PATHS" envDefault:",/" envSeparator:","`
+	JWTAuthCookieTokenName      string   `env:"FLAGR_JWT_AUTH_COOKIE_TOKEN_NAME" envDefault:"access_token"`
+	JWTAuthSecret               string   `env:"FLAGR_JWT_AUTH_SECRET" envDefault:""`
+	JWTAuthNoTokenStatusCode    int      `env:"FLAGR_JWT_AUTH_NO_TOKEN_STATUS_CODE" envDefault:"307"` // "307" or "401"
+	JWTAuthNoTokenRedirectURL   string   `env:"FLAGR_JWT_AUTH_NO_TOKEN_REDIRECT_URL" envDefault:""`
+	JWTAuthUserProperty         string   `env:"FLAGR_JWT_AUTH_USER_PROPERTY" envDefault:"flagr_user"`
 
 	// "HS256" and "RS256" supported
 	JWTAuthSigningMethod string `env:"FLAGR_JWT_AUTH_SIGNING_METHOD" envDefault:"HS256"`

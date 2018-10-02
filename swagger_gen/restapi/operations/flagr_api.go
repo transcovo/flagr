@@ -22,6 +22,7 @@ import (
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/constraint"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/distribution"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/evaluation"
+	"github.com/checkr/flagr/swagger_gen/restapi/operations/export"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/flag"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/health"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/segment"
@@ -45,9 +46,7 @@ func NewFlagrAPI(spec *loads.Document) *FlagrAPI {
 		BearerAuthenticator: security.BearerAuth,
 		JSONConsumer:        runtime.JSONConsumer(),
 		JSONProducer:        runtime.JSONProducer(),
-		HealthGetHealthHandler: health.GetHealthHandlerFunc(func(params health.GetHealthParams) middleware.Responder {
-			return middleware.NotImplemented("operation HealthGetHealth has not yet been implemented")
-		}),
+		BinProducer:         runtime.ByteStreamProducer(),
 		ConstraintCreateConstraintHandler: constraint.CreateConstraintHandlerFunc(func(params constraint.CreateConstraintParams) middleware.Responder {
 			return middleware.NotImplemented("operation ConstraintCreateConstraint has not yet been implemented")
 		}),
@@ -87,11 +86,17 @@ func NewFlagrAPI(spec *loads.Document) *FlagrAPI {
 		VariantFindVariantsHandler: variant.FindVariantsHandlerFunc(func(params variant.FindVariantsParams) middleware.Responder {
 			return middleware.NotImplemented("operation VariantFindVariants has not yet been implemented")
 		}),
+		ExportGetExportSqliteHandler: export.GetExportSqliteHandlerFunc(func(params export.GetExportSqliteParams) middleware.Responder {
+			return middleware.NotImplemented("operation ExportGetExportSqlite has not yet been implemented")
+		}),
 		FlagGetFlagHandler: flag.GetFlagHandlerFunc(func(params flag.GetFlagParams) middleware.Responder {
 			return middleware.NotImplemented("operation FlagGetFlag has not yet been implemented")
 		}),
 		FlagGetFlagSnapshotsHandler: flag.GetFlagSnapshotsHandlerFunc(func(params flag.GetFlagSnapshotsParams) middleware.Responder {
 			return middleware.NotImplemented("operation FlagGetFlagSnapshots has not yet been implemented")
+		}),
+		HealthGetHealthHandler: health.GetHealthHandlerFunc(func(params health.GetHealthParams) middleware.Responder {
+			return middleware.NotImplemented("operation HealthGetHealth has not yet been implemented")
 		}),
 		EvaluationPostEvaluationHandler: evaluation.PostEvaluationHandlerFunc(func(params evaluation.PostEvaluationParams) middleware.Responder {
 			return middleware.NotImplemented("operation EvaluationPostEvaluation has not yet been implemented")
@@ -150,9 +155,9 @@ type FlagrAPI struct {
 
 	// JSONProducer registers a producer for a "application/json" mime type
 	JSONProducer runtime.Producer
+	// BinProducer registers a producer for a "application/octet-stream" mime type
+	BinProducer runtime.Producer
 
-	// HealthGetHealthHandler sets the operation handler for the get health operation
-	HealthGetHealthHandler health.GetHealthHandler
 	// ConstraintCreateConstraintHandler sets the operation handler for the create constraint operation
 	ConstraintCreateConstraintHandler constraint.CreateConstraintHandler
 	// FlagCreateFlagHandler sets the operation handler for the create flag operation
@@ -179,10 +184,14 @@ type FlagrAPI struct {
 	SegmentFindSegmentsHandler segment.FindSegmentsHandler
 	// VariantFindVariantsHandler sets the operation handler for the find variants operation
 	VariantFindVariantsHandler variant.FindVariantsHandler
+	// ExportGetExportSqliteHandler sets the operation handler for the get export sqlite operation
+	ExportGetExportSqliteHandler export.GetExportSqliteHandler
 	// FlagGetFlagHandler sets the operation handler for the get flag operation
 	FlagGetFlagHandler flag.GetFlagHandler
 	// FlagGetFlagSnapshotsHandler sets the operation handler for the get flag snapshots operation
 	FlagGetFlagSnapshotsHandler flag.GetFlagSnapshotsHandler
+	// HealthGetHealthHandler sets the operation handler for the get health operation
+	HealthGetHealthHandler health.GetHealthHandler
 	// EvaluationPostEvaluationHandler sets the operation handler for the post evaluation operation
 	EvaluationPostEvaluationHandler evaluation.PostEvaluationHandler
 	// EvaluationPostEvaluationBatchHandler sets the operation handler for the post evaluation batch operation
@@ -264,8 +273,8 @@ func (o *FlagrAPI) Validate() error {
 		unregistered = append(unregistered, "JSONProducer")
 	}
 
-	if o.HealthGetHealthHandler == nil {
-		unregistered = append(unregistered, "health.GetHealthHandler")
+	if o.BinProducer == nil {
+		unregistered = append(unregistered, "BinProducer")
 	}
 
 	if o.ConstraintCreateConstraintHandler == nil {
@@ -320,12 +329,20 @@ func (o *FlagrAPI) Validate() error {
 		unregistered = append(unregistered, "variant.FindVariantsHandler")
 	}
 
+	if o.ExportGetExportSqliteHandler == nil {
+		unregistered = append(unregistered, "export.GetExportSqliteHandler")
+	}
+
 	if o.FlagGetFlagHandler == nil {
 		unregistered = append(unregistered, "flag.GetFlagHandler")
 	}
 
 	if o.FlagGetFlagSnapshotsHandler == nil {
 		unregistered = append(unregistered, "flag.GetFlagSnapshotsHandler")
+	}
+
+	if o.HealthGetHealthHandler == nil {
+		unregistered = append(unregistered, "health.GetHealthHandler")
 	}
 
 	if o.EvaluationPostEvaluationHandler == nil {
@@ -420,6 +437,9 @@ func (o *FlagrAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer
 		case "application/json":
 			result["application/json"] = o.JSONProducer
 
+		case "application/octet-stream":
+			result["application/octet-stream"] = o.BinProducer
+
 		}
 
 		if p, ok := o.customProducers[mt]; ok {
@@ -461,11 +481,6 @@ func (o *FlagrAPI) initHandlerCache() {
 	if o.handlers == nil {
 		o.handlers = make(map[string]map[string]http.Handler)
 	}
-
-	if o.handlers["GET"] == nil {
-		o.handlers["GET"] = make(map[string]http.Handler)
-	}
-	o.handlers["GET"]["/health"] = health.NewGetHealth(o.context, o.HealthGetHealthHandler)
 
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -535,12 +550,22 @@ func (o *FlagrAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/export/sqlite"] = export.NewGetExportSqlite(o.context, o.ExportGetExportSqliteHandler)
+
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/flags/{flagID}"] = flag.NewGetFlag(o.context, o.FlagGetFlagHandler)
 
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/flags/{flagID}/snapshots"] = flag.NewGetFlagSnapshots(o.context, o.FlagGetFlagSnapshotsHandler)
+
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/health"] = health.NewGetHealth(o.context, o.HealthGetHealthHandler)
 
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)

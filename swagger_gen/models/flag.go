@@ -19,6 +19,9 @@ import (
 // swagger:model flag
 type Flag struct {
 
+	// created by
+	CreatedBy string `json:"createdBy,omitempty"`
+
 	// enabled data records will get data logging in the metrics pipeline, for example, kafka.
 	// Required: true
 	DataRecordsEnabled *bool `json:"dataRecordsEnabled"`
@@ -37,8 +40,19 @@ type Flag struct {
 	// Minimum: 1
 	ID int64 `json:"id,omitempty"`
 
+	// unique key representation of the flag
+	// Min Length: 1
+	Key string `json:"key,omitempty"`
+
 	// segments
 	Segments []*Segment `json:"segments"`
+
+	// updated at
+	// Format: date-time
+	UpdatedAt strfmt.DateTime `json:"updatedAt,omitempty"`
+
+	// updated by
+	UpdatedBy string `json:"updatedBy,omitempty"`
 
 	// variants
 	Variants []*Variant `json:"variants"`
@@ -64,7 +78,15 @@ func (m *Flag) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateKey(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateSegments(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUpdatedAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -122,6 +144,19 @@ func (m *Flag) validateID(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Flag) validateKey(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Key) { // not required
+		return nil
+	}
+
+	if err := validate.MinLength("key", "body", string(m.Key), 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *Flag) validateSegments(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.Segments) { // not required
@@ -142,6 +177,19 @@ func (m *Flag) validateSegments(formats strfmt.Registry) error {
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (m *Flag) validateUpdatedAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.UpdatedAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("updatedAt", "body", "date-time", m.UpdatedAt.String(), formats); err != nil {
+		return err
 	}
 
 	return nil
